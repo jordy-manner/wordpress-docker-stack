@@ -1,0 +1,13 @@
+http:
+  routers:
+    traefik:
+      service: "api@internal"
+      tls:
+        domains:
+          - main: "localtest.me"
+            sans:
+              - "*.localtest.me"
+tls:
+  certificates:
+    - certFile: "/etc/certs/localtest.me.pem"
+      keyFile: "/etc/certs/localtest.me-key.pem"
