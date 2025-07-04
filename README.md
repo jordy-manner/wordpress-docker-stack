@@ -182,7 +182,7 @@ Share token to publicly expose the web local with [expose](https://expose.dev/)
 #### Easy way
 
 ```shell
-make config-set var=NAME_OF_VARIABLE value=VALUE
+make config-set VAR=NAME_OF_VARIABLE VAL=VALUE_OF_VARIABLE
 ```
 
 #### Advanced way
