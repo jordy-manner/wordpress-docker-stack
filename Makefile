@@ -63,6 +63,7 @@ config_vars=\
 	DB_NAME DB_USER\
 	DB_PASSWORD\
 	DB_PREFIX\
+	DB_DUMP_INSTALL\
 	ADMIN_USER\
 	ADMIN_PASSWORD\
 	ADMIN_EMAIL\
@@ -70,8 +71,6 @@ config_vars=\
 	SITE_TITLE\
 	NGROK_AUTHTOKEN\
 	EXPOSE_SHARE_TOKEN
-
-DB_DUMP_INSTALLER := $(APP_ROOT_DIR)/var/db/install.sql.gz
 
 # default target
 .DEFAULT_GOAL := help
@@ -364,10 +363,10 @@ db-dump: ## Dump the database.
 ##? [GZIP=1]		Force overwriting file if it exists.
 ##? [FILE="{{ file_path }}"]		Destination file
 
-.PHONY: db-dump-install
-db-dump-install: ## Generate a secure dump database to install without ADMIN_USER.
-	@if [ -f "$(DB_DUMP_INSTALLER)" ] && [ "$(FORCE)" != "1" ]; then \
-		echo "⚠️  File $(DB_DUMP_INSTALLER) already exists."; \
+.PHONY: db-dump-installer
+db-dump-installer: guard-DB_DUMP_INSTALL ## Generate a secure dump database to install without ADMIN_USER.
+	@if [ -f "$(DB_DUMP_INSTALL)" ] && [ "$(FORCE)" != "1" ]; then \
+		echo "⚠️  File $(DB_DUMP_INSTALL) already exists."; \
 		read -p "Do you want to overwrite this file ? [y/N] " confirm; \
 		if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
 			echo "Operation canceled."; \
@@ -375,7 +374,11 @@ db-dump-install: ## Generate a secure dump database to install without ADMIN_USE
 		fi \
 	fi
 	@$(wp) user delete ${ADMIN_USER} --yes
-	@make db-dump FILE=$(DB_DUMP_INSTALLER) GZIP=1
+	@if echo "$(DB_DUMP_INSTALL)" | grep -q '\.sql\.gz$$'; then \
+		make db-dump FILE=$(DB_DUMP_INSTALL) GZIP=1; \
+	else \
+		make db-dump FILE=$(DB_DUMP_INSTALL); \
+	fi
 	@$(wp) user create ${ADMIN_USER} ${ADMIN_EMAIL} --user_pass=${ADMIN_PASSWORD} --role=administrator
 ##? [FORCE=1]		Force overwriting file if it exists.
 

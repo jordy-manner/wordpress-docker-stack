@@ -150,6 +150,10 @@ Database password.
 
 Database prefix.
 
+#### DB_DUMP_INSTALL
+
+Path to save secure dump.
+
 #### ADMIN_USER
 
 Admin username.
