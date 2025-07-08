@@ -86,8 +86,8 @@ services:
       context: .
       dockerfile: ${DOCKER_PWD}/build/web/Dockerfile
     environment:
-      SERVE_WEB_PROXY: ${SERVE_WEB_PROXY}
-      WP_DB_HOST: db
+      WP_APP_RELEASE: ${APP_RELEASE}
+      WP_DB_HOST: ${DB_HOST}
       WP_DB_ENGINE: ${DB_ENGINE}
       WP_DB_PORT: ${DB_PORT}
       WP_DB_NAME: ${DB_NAME}

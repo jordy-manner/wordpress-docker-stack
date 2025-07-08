@@ -106,6 +106,10 @@ Home directory of the host user.
 
 IP address of the Docker host.
 
+#### APP_RELEASE
+
+Release version of application 
+
 #### DB_ENGINE
 
 Database engine.
