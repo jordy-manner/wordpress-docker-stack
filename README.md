@@ -121,6 +121,7 @@ Database host.
 #### DB_PORT
 
 Database port.
+
 #### DB_CHARSET
 
 Database charset.
@@ -188,4 +189,81 @@ make config-set KEY=NAME_OF_VARIABLE VAL=VALUE_OF_VARIABLE
 #### Advanced way
 
 Copy `./docker/conf/.config.sample.env` to `./.config.env` and customize it with your own set of values.
+
+## After initialization
+
+### Change .gitignore to allow save themes and plugins in repository
+
+Edit [app/.gitignore](app/.gitignore) file.
+
+```diff
+public/app/plugins/*
++!public/app/plugins/{{your-theme-name}}
+!public/app/plugins/.gitkeep
+```
+
+### Centralize vendor in root vendor (best practice)
+
+Optionally but best practice, you should centralize vendor in one unique vendor directory in the root directory [vendor](app/vendor) of application.
+
+Edit`app/public/app/themes/{yout-theme}/composer.json` file.
+
+```diff
+{
+-  "name": "roots/sage",
++  "name": "your-name-space/your-theme-name",
+  "type": "wordpress-theme",
+-  "license": "MIT",
++  "license": "proprietary",
+-  "description": "WordPress starter theme with a modern development workflow",
++  "description": "Your own description",
+-  "homepage": "https://roots.io/sage/",
++  "homepage": "https://your-own-homepage/",
++  "version": "0.0.0",
+```
+
+Edit [app/composer.json](app/composer.json) file.
+
+```diff
+"repositories": [
+    {
+      "type": "composer",
+      "url": "https://wpackagist.org",
+      "only": ["wpackagist-plugin/*", "wpackagist-theme/*"]
+    },
++    {
++      "type": "path",
++      "url": "public/app/themes/elasticsuite",
++      "options": {
++        "symlink": true
++      }
++    }
++  ],
+```
+
+```diff
+  "require": {
+    "php": ">=8.1",
+    [...]
++    "your-name-space/your-theme-name": "*"
+  },
+```
+
+``` bash
+make composer CMD=update
+```
+
+So you can remove theme/vendor and theme/composer.lock file
+
+### Dump your database and create an install for future installation
+
+``` bash
+make db-dumb-install
+```
+
+### Create a git repository for your application 
+
+1. Remove .git directory (`rm -rf .git`)
+2. Create your own application project
+3. Initialize your git repository `git init --initial-branch=main && git remote add origin git@github.com:your-owner/your-repository.git`
 

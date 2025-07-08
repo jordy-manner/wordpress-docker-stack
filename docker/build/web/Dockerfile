@@ -23,9 +23,6 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
 RUN install-php-extensions @composer exif gd imagick intl mysqli pdo_mysql zip
 
-RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
-RUN chmod +x wp-cli.phar && mv wp-cli.phar /usr/local/bin/wp
-
 # Apache config
 RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 

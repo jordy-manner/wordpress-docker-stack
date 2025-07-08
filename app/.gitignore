@@ -14,8 +14,10 @@ public/app/uploads/*
 # WordPress
 public/wp
 
-# Logs
-var/db
+# Var
+var/db/*
+!var/db/.gitkeep
+!var/db/install.sql*
 var/log/*.log
 
 # Dotenv

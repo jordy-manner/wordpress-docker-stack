@@ -150,7 +150,7 @@ if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROT
     $_SERVER['HTTPS'] = 'on';
 }
 
-if(str_contains($_SERVER['HTTP_X_FORWARDED_HOST'], 'ngrok')) {
+if(isset($_SERVER['HTTP_X_FORWARDED_HOST']) && str_contains($_SERVER['HTTP_X_FORWARDED_HOST'], 'ngrok')) {
     if(
         isset($_SERVER['HTTP_X_FORWARDED_HOST']) &&
         $_SERVER['HTTP_X_FORWARDED_PROTO'] === "https"

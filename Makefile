@@ -19,7 +19,7 @@ console = $(php) php -d memory_limit=-1 bin/console
 docker-compose = docker compose -f $(DOCKER_PWD)/compose.yml -f $(DOCKER_PWD)/compose.override.yml -p $(PROJECT_NAME)
 node = $(docker-compose) run --rm node
 php = $(docker-compose) run --rm web
-wp = $(docker-compose) exec -it web wp --path=/var/www/html/public/wp
+wp = $(docker-compose) run --rm wp-cli wp --path=/var/www/html/public/wp
 phpqa = docker run --init --rm -v $(PROJECT_ROOT_DIR):/project -w /project jakzal/phpqa:php8.3
 grumphp = docker run --rm -it -v $(PROJECT_ROOT_DIR):/grumphp -w /grumphp webdevops/php:8.3-alpine
 
@@ -71,8 +71,42 @@ config_vars=\
 	NGROK_AUTHTOKEN\
 	EXPOSE_SHARE_TOKEN
 
+DB_DUMP_INSTALLER := $(APP_ROOT_DIR)/var/db/install.sql.gz
+
 # default target
 .DEFAULT_GOAL := help
+
+##@ Initialization (should be deleted on your own project)
+.PHONY: init ## Initialize application.
+init: up init-install init-create init-config init-dependencies init-wp info
+
+.PHONY: init ## Clean, flush and  renew initialization.
+reinit: init-clean down init
+
+.PHONY: init-install ## Install dependencies.
+init-install:
+	@$(composer) install
+
+.PHONY: init-create
+init-create: ## Download and install Roots/Sage.
+	@$(docker-compose) exec -ti web bash -c '/usr/local/bin/composer create-project roots/sage public/app/themes/${THEME_NAME} --no-interaction --no-progress --prefer-dist'
+
+.PHONY: init-config
+init-config: ## Finalize Roots/Sage configuration.
+	@$(docker-compose) exec -ti web bash -c "sed -ri -e 's!/app/themes/sage/public/build/!/app/themes/${THEME_NAME}/public/build/!g' /var/www/html/public/app/themes/${THEME_NAME}/vite.config.js"
+
+.PHONY: init-dependencies
+init-dependencies: ## Install application dependencies.
+	@make npm CMD="install"
+	@make npm CMD="run build"
+
+.PHONY: install-wp
+init-wp:  ## Init wordpress application (install database and activate theme).
+	@$(wp) core install --url=${HOME_URL} --title='${SITE_TITLE}' --admin_user=${ADMIN_USER} --admin_password=${ADMIN_PASSWORD} --admin_email=${ADMIN_EMAIL}
+	@$(wp) theme activate ${THEME_NAME}
+
+init-clean: ## Clean initialization to allow renewing.
+	@rm -rf $(THEME_ROOT_DIR) $(APP_ROOT_DIR)/vendor $(APP_ROOT_DIR)/public/wp
 
 ##@ General
 .PHONY: help
@@ -127,37 +161,6 @@ open: ## Open browser
 	@nohup xdg-open https://${SERVE_WEB_PROXY} > /dev/null 2>&1
 
 ##@ Install
-.PHONY: init ## Initialize application.
-init: up init-install init-create init-config init-dependencies init-wp info
-
-.PHONY: init ## Clean, flush and  renew initialization.
-reinit: init-clean down init
-
-.PHONY: init-install ## Install dependencies.
-init-install:
-	@$(composer) install
-
-.PHONY: init-create
-init-create: ## Download and install Roots/Sage.
-	@$(docker-compose) exec -ti web bash -c '/usr/local/bin/composer create-project roots/sage public/app/themes/${THEME_NAME} --no-interaction --no-progress --prefer-dist'
-
-.PHONY: init-config
-init-config: ## Finalize Roots/Sage configuration.
-	@$(docker-compose) exec -ti web bash -c "sed -ri -e 's!/app/themes/sage/public/build/!/app/themes/${THEME_NAME}/public/build/!g' /var/www/html/public/app/themes/${THEME_NAME}/vite.config.js"
-
-.PHONY: init-dependencies
-init-dependencies: ## Install application dependencies.
-	@make npm CMD="install"
-	@make npm CMD="run build"
-
-.PHONY: install-wp
-init-wp:  ## Init wordpress application (install database and activate theme).
-	@$(wp) core install --url=${HOME_URL} --title='${SITE_TITLE}' --admin_user=${ADMIN_USER} --admin_password=${ADMIN_PASSWORD} --admin_email=${ADMIN_EMAIL}
-	@$(wp) theme activate ${THEME_NAME}
-
-init-clean: ## Clean initialization to allow renewing.
-	@rm -rf $(THEME_ROOT_DIR) $(APP_ROOT_DIR)/vendor $(APP_ROOT_DIR)/public/wp
-
 .PHONY: install
 install: build up install-dependencies install-database post-install info ## ## Installing project
 
@@ -351,8 +354,30 @@ db-import: guard-FILE ## Import a database.
 db-dump: ## Dump the database.
 	@make up container=db
 	@mkdir -p $(APP_ROOT_DIR)/var/db/dump/
-	@$(docker-compose) exec -ti db bash -c 'mariadb-dump -p"$$MYSQL_ROOT_PASSWORD" "$$MYSQL_DATABASE" | pv > /tmp/dump.sql'
-	@$(docker-compose) cp db:/tmp/dump.sql $(APP_ROOT_DIR)/var/db/dump/dump-$(date).sql
+	@if [ "$(GZIP)" != "1" ]; then \
+		$(docker-compose) exec -ti db bash -c 'mariadb-dump -p"$$MYSQL_ROOT_PASSWORD" "$$MYSQL_DATABASE" | pv > /tmp/dump.sql'; \
+		$(docker-compose) cp db:/tmp/dump.sql ${or ${FILE}, $(APP_ROOT_DIR)/var/db/dump/dump-$(date).sql}; \
+	else \
+		$(docker-compose) exec -ti db bash -c 'mariadb-dump -p"$$MYSQL_ROOT_PASSWORD" "$$MYSQL_DATABASE" | pv | gzip > /tmp/dump.sql.gz'; \
+		$(docker-compose) cp db:/tmp/dump.sql.gz ${or ${FILE}, $(APP_ROOT_DIR)/var/db/dump/dump-$(date).sql.gz}; \
+	fi
+##? [GZIP=1]		Force overwriting file if it exists.
+##? [FILE="{{ file_path }}"]		Destination file
+
+.PHONY: db-dump-install
+db-dump-install: ## Generate a secure dump database to install without ADMIN_USER.
+	@if [ -f "$(DB_DUMP_INSTALLER)" ] && [ "$(FORCE)" != "1" ]; then \
+		echo "⚠️  File $(DB_DUMP_INSTALLER) already exists."; \
+		read -p "Do you want to overwrite this file ? [y/N] " confirm; \
+		if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
+			echo "Operation canceled."; \
+			exit 1; \
+		fi \
+	fi
+	@$(wp) user delete ${ADMIN_USER} --yes
+	@make db-dump FILE=$(DB_DUMP_INSTALLER) GZIP=1
+	@$(wp) user create ${ADMIN_USER} ${ADMIN_EMAIL} --user_pass=${ADMIN_PASSWORD} --role=administrator
+##? [FORCE=1]		Force overwriting file if it exists.
 
 #### Utils
 guard-%:
