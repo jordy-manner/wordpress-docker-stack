@@ -239,30 +239,30 @@ config: ## Print list of configuration variables.
 	done
 
 .PHONY: config-get
-config-get: guard-VAR ## Print one configuration variable.
-	@echo ${if ${VAR}, "$$VAR=$${!VAR}", '"var" arg is required'}
-##? [VAR="{{ name }}"]		Required environment variable name.
+config-get: guard-KEY ## Print one configuration variable.
+	@echo ${if ${KEY}, "$$KEY=$${!KEY}", '"var" arg is required'}
+##? [KEY="{{ name }}"]		Required environment variable name.
 
 .PHONY: config-set
-config-set: guard-VAR guard-VAL ## Set a customized configuration variable.
-	@VAR=$(VAR); \
+config-set: guard-KEY guard-VAL ## Set a customized configuration variable.
+	@KEY=$(KEY); \
 	VALUE=$(VAL); \
 	FILE=.config.env; \
 	if [ ! -f $$FILE ]; then \
 		touch $$FILE; \
 	fi; \
-	if grep -q "^export $$VAR=" $$FILE; then \
+	if grep -q "^export $$KEY=" $$FILE; then \
 		if sed --version >/dev/null 2>&1; then \
 			# GNU sed (Linux) \
-			sed -i "s|^export $$VAR=.*|export $$VAR=$$VAL|" $$FILE; \
+			sed -i "s|^export $$KEY=.*|export $$KEY=$$VAL|" $$FILE; \
 		else \
 			# BSD sed (macOS) \
-			sed -i '' "s|^export $$VAR=.*|export $$VAR=$$VAL|" $$FILE; \
+			sed -i '' "s|^export $$KEY=.*|export $$KEY=$$VAL|" $$FILE; \
 		fi; \
 	else \
-		echo "export $$VAR=$$VAL" >> $$FILE; \
+		echo "export $$KEY=$$VAL" >> $$FILE; \
 	fi; \
-	echo "✅ $$VAR set to '$$VAL' in $$FILE"
+	echo "✅ $$KEY set to '$$VAL' in $$FILE"
 
 ##@ Utils
 .PHONY: bash

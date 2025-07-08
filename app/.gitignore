@@ -1,7 +1,8 @@
 # Application
 public/app/cache
 public/app/languages
-public/app/mu-plugins
+public/app/mu-plugins/*
+!public/app/mu-plugins/ngrok-rewrite-urls.php
 public/app/plugins/*
 !public/app/plugins/.gitkeep
 public/app/themes/*

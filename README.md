@@ -41,7 +41,7 @@ make config
 ### Print one configuration variable
 
 ```shell
-make config-get var=NAME_OF_VARIABLE
+make config-get KEY=NAME_OF_VARIABLE
 ```
 
 ### Available configuration variables
@@ -86,10 +86,6 @@ Hostname of the mail server webUI (Mailpit).
 
 Hostname of the reverse proxy webUI (Traefik).
 
-### User variables (advanced usage)
-
-Copy `docker/conf/.user.env.sample` to `./.user.env` and custom with your own values.
-
 #### LOCAL_UID
 
 User ID of the host user.
@@ -102,10 +98,6 @@ Username of the host user.
 
 Group ID of the host user.
 
-#### LOCAL_GROUPNAME
-
-Group name of the host user.
-
 #### LOCAL_HOME
 
 Home directory of the host user.
@@ -117,6 +109,10 @@ IP address of the Docker host.
 #### DB_ENGINE
 
 Database engine.
+
+#### DB_HOST
+
+Database host.
 
 #### DB_PORT
 
@@ -182,7 +178,7 @@ Share token to publicly expose the web local with [expose](https://expose.dev/)
 #### Easy way
 
 ```shell
-make config-set VAR=NAME_OF_VARIABLE VAL=VALUE_OF_VARIABLE
+make config-set KEY=NAME_OF_VARIABLE VAL=VALUE_OF_VARIABLE
 ```
 
 #### Advanced way

@@ -150,6 +150,22 @@ if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROT
     $_SERVER['HTTPS'] = 'on';
 }
 
+if(str_contains($_SERVER['HTTP_X_FORWARDED_HOST'], 'ngrok')) {
+    if(
+        isset($_SERVER['HTTP_X_FORWARDED_HOST']) &&
+        $_SERVER['HTTP_X_FORWARDED_PROTO'] === "https"
+    ) {
+        $server_proto = 'https://';
+    } else {
+        $server_proto = 'http://';
+    }
+
+    Config::define('WP_SITEURL', $server_proto . $_SERVER['HTTP_HOST']);
+    Config::define('WP_HOME', $server_proto . $_SERVER['HTTP_HOST']);
+    Config::define('LOCALTUNNEL_ACTIVE', true);
+}
+
+
 $env_config = __DIR__ . '/environments/' . WP_ENV . '.php';
 
 if (file_exists($env_config)) {
