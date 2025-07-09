@@ -164,20 +164,29 @@ open: ## Open browser
 install: build up install-dependencies install-database post-install info ## ## Installing project
 
 .PHONY: install-dependencies
-install-dependencies: ## @todo Install application dependencies.
-#	@$(composer) install --no-interaction --no-progress --optimize-autoloader --prefer-dist
-#	@make yarn CMD="install"
-#	@make yarn CMD="build"
+install-dependencies: ## Install application dependencies.
+	@$(composer) install --no-interaction --no-progress --optimize-autoloader --prefer-dist
+	@make npm CMD="install"
+	@make npm CMD="run build"
 
 .PHONY: install-database
-install-database: ## @todo Install application database.
-#	@make up container=db
-#	@make db-import FILE=$(DOCKER_PWD)/data/postgres/install.sql.gz
-#	@$(console) doctrine:migrations:migrate --allow-no-migration --no-interaction --quiet
+install-database: ## Install application database.
+	@if [ -f "$(DB_DUMP_INSTALL)" ]; then \
+		make up container=db; \
+		make db-import FILE=$(DB_DUMP_INSTALL); \
+	else \
+		echo "No database dump file found at $(DB_DUMP_INSTALL). Please create it before installing the database."; \
+	fi
+
+.PHONY: install-wp
+install-wp:  ## Install wordpress application.
+	@$(wp) rewrite structure '/%postname%/' --category-base=/categorie --tag-base=/etiquette --hard
+	@$(wp) theme activate ${THEME_NAME}
+	@$(wp) user create ${ADMIN_USER} ${ADMIN_EMAIL} --user_pass=${ADMIN_PASSWORD} --role=administrator
 
 .PHONY: post-install
-post-install: ## @todo Execute post-install scripts.
-#	@$(docker-compose) exec -u ${LOCAL_USERNAME} web /bin/bash app/scripts/post-install.sh
+post-install: ## Execute post-install scripts.
+	@$(docker-compose) exec -u ${LOCAL_USERNAME} web /bin/bash scripts/post-install.sh
 
 .PHONY: uninstall
 uninstall: clean ## @todo Uninstall application.
@@ -296,6 +305,19 @@ wp: ## Launch Symfony console command.
 	@$(wp) ${or ${CMD}, --info}
 ##? [CMD="{{ command }}"]		[list] by default.
 
+.PHONY: wp-reset
+wp-reset: ## Launch Symfony console command.
+	@echo "⚠️  Database will be deleted and all data will be lost."; \
+	read -p "Are you sure ? [y/N] " confirm; \
+	if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
+		echo "Operation canceled."; \
+		exit 1; \
+	fi
+	@make db-dump FILE=$(DB_DUMP_DIR)/backup-$(date).sql.gz GZIP=1
+	@$(wp) db reset --yes
+	@$(wp) core install --url=${HOME_URL} --title='${SITE_TITLE}' --admin_user=${ADMIN_USER} --admin_password=${ADMIN_PASSWORD} --admin_email=${ADMIN_EMAIL}
+	@$(wp) theme activate ${THEME_NAME}
+
 .PHONY: mailer
 mailer: ## @todo Open a terminal to test mail send.
 	@curl -X POST "http://`make ip container=mail -s`:8025/api/v1/send" \
@@ -352,13 +374,13 @@ db-import: guard-FILE ## Import a database.
 .PHONY: db-dump
 db-dump: ## Dump the database.
 	@make up container=db
-	@mkdir -p $(APP_ROOT_DIR)/var/db/dump/
+	@mkdir -p $(DB_DUMP_DIR)
 	@if [ "$(GZIP)" != "1" ]; then \
 		$(docker-compose) exec -ti db bash -c 'mariadb-dump -p"$$MYSQL_ROOT_PASSWORD" "$$MYSQL_DATABASE" | pv > /tmp/dump.sql'; \
-		$(docker-compose) cp db:/tmp/dump.sql ${or ${FILE}, $(APP_ROOT_DIR)/var/db/dump/dump-$(date).sql}; \
+		$(docker-compose) cp db:/tmp/dump.sql ${or ${FILE}, $(DB_DUMP_DIR)/dump-$(date).sql}; \
 	else \
 		$(docker-compose) exec -ti db bash -c 'mariadb-dump -p"$$MYSQL_ROOT_PASSWORD" "$$MYSQL_DATABASE" | pv | gzip > /tmp/dump.sql.gz'; \
-		$(docker-compose) cp db:/tmp/dump.sql.gz ${or ${FILE}, $(APP_ROOT_DIR)/var/db/dump/dump-$(date).sql.gz}; \
+		$(docker-compose) cp db:/tmp/dump.sql.gz ${or ${FILE}, $(DB_DUMP_DIR)/dump-$(date).sql.gz}; \
 	fi
 ##? [GZIP=1]		Force overwriting file if it exists.
 ##? [FILE="{{ file_path }}"]		Destination file

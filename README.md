@@ -64,7 +64,7 @@ Name of the Wordpress theme.
 
 #### THEME_ROOT_DIR
 
-Root directory of the Wordpress theme.
+Wordpress themes root directory.
 
 #### SERVE_BASE_HOST
 
@@ -149,6 +149,10 @@ Database password.
 #### DB_PREFIX
 
 Database prefix.
+
+#### DB_DUMP_DIR
+
+Database dump directory.
 
 #### DB_DUMP_INSTALL
 
