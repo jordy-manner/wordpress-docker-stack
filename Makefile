@@ -258,24 +258,33 @@ config-get: guard-KEY ## Print one configuration variable.
 
 .PHONY: config-set
 config-set: guard-KEY guard-VAL ## Set a customized configuration variable.
-	@KEY=$(KEY); \
-	VALUE=$(VAL); \
-	FILE=.config.env; \
+	@SCOPE=$(SCOPE); \
+	if [ -z "$$SCOPE" ]; then \
+		SCOPE=local; \
+	fi; \
+	if [ "$$SCOPE" = "global" ]; then \
+		FILE=.config.env; \
+	else \
+		FILE=.config.env.$$SCOPE; \
+	fi; \
+	KEY=$(KEY); \
+	VAL=$(VAL); \
 	if [ ! -f $$FILE ]; then \
 		touch $$FILE; \
 	fi; \
 	if grep -q "^export $$KEY=" $$FILE; then \
 		if sed --version >/dev/null 2>&1; then \
-			# GNU sed (Linux) \
 			sed -i "s|^export $$KEY=.*|export $$KEY=$$VAL|" $$FILE; \
 		else \
-			# BSD sed (macOS) \
 			sed -i '' "s|^export $$KEY=.*|export $$KEY=$$VAL|" $$FILE; \
 		fi; \
 	else \
 		echo "export $$KEY=$$VAL" >> $$FILE; \
 	fi; \
-	echo "✅ $$KEY set to '$$VAL' in $$FILE"
+	echo "✅ $$KEY set to '$$VAL' in $$FILE (scope: $$SCOPE)"
+##? [KEY="{{ name of variable }}"]		Variable name.
+##? [VAL="{{ value of variable }}"]		Variable value.
+##? [SCOPE="{{ local|global|${DOCKER_ENV} }}"]	Scope of variable.
 
 ##@ Utils
 .PHONY: bash
@@ -328,12 +337,12 @@ mailer: ## @todo Open a terminal to test mail send.
 .PHONY: share
 share: guard-NGROK_AUTHTOKEN ## Publicly expose app on the web with nGrok (NGROK_AUTHTOKEN required).
 	@$(docker-compose) run --rm -p 4040:4040 -e NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN} ngrok http ${or ${server}, http://`make ip container=web -s`}
-##? [server="{{ server }}"]		expose web service by default.
+##? [server="{{ server }}"]	expose web service by default.
 
 .PHONY: expose
 expose: guard-EXPOSE_SHARE_TOKEN ## Publicly expose app on the web with expose.dev (EXPOSE_SHARE_TOKEN required).
 	@$(docker-compose) run --rm -p 4040:4040 expose share --auth=${EXPOSE_SHARE_TOKEN} -- ${or ${server}, "http://`make ip container=web -s`"}
-##? [server="{{ server }}"]		expose web service by default.
+##? [server="{{ server }}"]	expose web service by default.
 
 ##@ NodeJS
 .PHONY: node
@@ -382,7 +391,7 @@ db-dump: ## Dump the database.
 		$(docker-compose) exec -ti db bash -c 'mariadb-dump -p"$$MYSQL_ROOT_PASSWORD" "$$MYSQL_DATABASE" | pv | gzip > /tmp/dump.sql.gz'; \
 		$(docker-compose) cp db:/tmp/dump.sql.gz ${or ${FILE}, $(DB_DUMP_DIR)/dump-$(date).sql.gz}; \
 	fi
-##? [GZIP=1]		Force overwriting file if it exists.
+##? [GZIP=1]			Force overwriting file if it exists.
 ##? [FILE="{{ file_path }}"]		Destination file
 
 .PHONY: db-dump-installer
@@ -402,7 +411,7 @@ db-dump-installer: guard-DB_DUMP_INSTALL ## Generate a secure dump database to i
 		make db-dump FILE=$(DB_DUMP_INSTALL); \
 	fi
 	@$(wp) user create ${ADMIN_USER} ${ADMIN_EMAIL} --user_pass=${ADMIN_PASSWORD} --role=administrator
-##? [FORCE=1]		Force overwriting file if it exists.
+##? [FORCE=1]			Force overwriting file if it exists.
 
 #### Utils
 guard-%:

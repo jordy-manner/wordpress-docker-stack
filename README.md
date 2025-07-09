@@ -194,6 +194,24 @@ Share token to publicly expose the web local with [expose](https://expose.dev/)
 make config-set KEY=NAME_OF_VARIABLE VAL=VALUE_OF_VARIABLE
 ```
 
+> This command create the set of variables in a `.config.env.local` file.
+
+Usually `.config.env.local` was not pushed in repository (.gitignore).
+
+You can use `global` scope to push custom configuration in repository.
+
+```shell
+make config-set KEY=NAME_OF_VARIABLE VAL=VALUE_OF_VARIABLE SCOPE=global
+```
+
+Another way is to scoping to DOCKER_ENV.
+
+```shell
+make config-set KEY=NAME_OF_VARIABLE VAL=VALUE_OF_VARIABLE SCOPE=staging
+```
+
+> This command create the set of variables in a `.config.env.staging` file.
+
 #### Advanced way
 
 Copy `./docker/conf/.config.sample.env` to `./.config.env` and customize it with your own set of values.
