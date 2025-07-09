@@ -20,8 +20,6 @@ docker-compose = docker compose -f $(DOCKER_PWD)/compose.yml -f $(DOCKER_PWD)/co
 node = $(docker-compose) run --rm node
 php = $(docker-compose) run --rm web
 wp = $(docker-compose) run --rm wp-cli wp --path=/var/www/html/public/wp
-phpqa = docker run --init --rm -v $(PROJECT_ROOT_DIR):/project -w /project jakzal/phpqa:php8.3
-grumphp = docker run --rm -it -v $(PROJECT_ROOT_DIR):/grumphp -w /grumphp webdevops/php:8.3-alpine
 
 # output colors
 C_BLACK=\033[0;30m
