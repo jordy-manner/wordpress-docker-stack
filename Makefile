@@ -6,17 +6,17 @@ ifndef DOCKER_ENV
 export DOCKER_ENV=dev
 endif
 
-ifndef DOCKER_PWD
-export DOCKER_PWD=$(PWD)/docker
+ifndef DOCKER_DIR
+export DOCKER_DIR=$(PWD)/docker
 endif
 
 # Import .env file
-include $(DOCKER_PWD)/conf/.env
+include $(DOCKER_DIR)/conf/.env
 
 # set binary
 composer = $(php) php -d memory_limit=-1 /usr/local/bin/composer
 console = $(php) php -d memory_limit=-1 bin/console
-docker-compose = docker compose -f $(DOCKER_PWD)/compose.yml -f $(DOCKER_PWD)/compose.override.yml -p $(PROJECT_NAME)
+docker-compose = docker compose -f $(DOCKER_DIR)/compose.yml -f $(DOCKER_DIR)/compose.override.yml -p $(PROJECT_NAME)
 node = $(docker-compose) run --rm node
 php = $(docker-compose) run --rm web
 wp = $(docker-compose) run --rm wp-cli wp --path=/var/www/html/public/wp
@@ -37,15 +37,15 @@ C_NONE=\033[0m
 date = $(shell date +'%y%m%d%H%M%S')
 config_vars=\
 	PROJECT_NAME\
-	PROJECT_ROOT_DIR\
-	APP_ROOT_DIR\
+	PROJECT_DIR\
+	APP_DIR\
 	THEME_NAME\
-	THEME_ROOT_DIR\
+	THEME_DIR\
 	SERVE_BASE_HOST\
 	SERVE_WEB_PROXY\
-	SERVE_DB_PROXY\
-	SERVE_MAIL_PROXY\
-	SERVE_TRAEFIK_PROXY\
+	SERVE_DBMGR_PROXY\
+	SERVE_MAILCATCH_PROXY\
+	SERVE_REVERSE_PROXY\
 	LOCAL_UID\
 	LOCAL_USERNAME\
 	LOCAL_GID\
@@ -61,7 +61,7 @@ config_vars=\
 	DB_NAME DB_USER\
 	DB_PASSWORD\
 	DB_PREFIX\
-	DB_DUMP_INSTALL\
+	DB_DUMP_INSTALL_PATH\
 	ADMIN_USER\
 	ADMIN_PASSWORD\
 	ADMIN_EMAIL\
@@ -103,7 +103,7 @@ init-wp:  ## Init wordpress application (install database and activate theme).
 	@$(wp) theme activate ${THEME_NAME}
 
 init-clean: ## Clean initialization to allow renewing.
-	@rm -rf $(THEME_ROOT_DIR) $(APP_ROOT_DIR)/vendor $(APP_ROOT_DIR)/public/wp
+	@rm -rf $(THEME_DIR) $(APP_DIR)/vendor $(APP_DIR)/public/wp
 
 ##@ General
 .PHONY: help
@@ -127,13 +127,13 @@ info: ## Show services info.
 	@printf "   ${C_GREEN}Admin email:${C_NONE}			${ADMIN_EMAIL}\n"
 	@printf "   ${C_GREEN}Admin password:${C_NONE}		${ADMIN_PASSWORD}\n"
 	@printf "\n${C_CYAN}DB MANAGER${C_NONE}\n"
-	@printf "   https://${SERVE_DB_PROXY} ${C_GRAY}[$$(curl -k -s -o /dev/null -w "%{http_code}" https://${SERVE_DB_PROXY})]${C_NONE}\n"
+	@printf "   https://${SERVE_DBMGR_PROXY} ${C_GRAY}[$$(curl -k -s -o /dev/null -w "%{http_code}" https://${SERVE_DBMGR_PROXY})]${C_NONE}\n"
 	@printf "   http://$$(make ip container=adminer -s):8080 ${C_GRAY}[$$(curl -s -o /dev/null -w "%{http_code}" http://$$(make ip container=adminer -s):8080)]${C_NONE}\n"
 	@printf "\n${C_CYAN}MAIL CATCHER${C_NONE}\n"
-	@printf "   https://${SERVE_MAIL_PROXY} ${C_GRAY}[$$(curl -k -s -o /dev/null -w "%{http_code}" https://${SERVE_MAIL_PROXY})]${C_NONE}\n"
+	@printf "   https://${SERVE_MAILCATCH_PROXY} ${C_GRAY}[$$(curl -k -s -o /dev/null -w "%{http_code}" https://${SERVE_MAILCATCH_PROXY})]${C_NONE}\n"
 	@printf "   http://$$(make ip container=mail -s):8025 ${C_GRAY}[$$(curl -s -o /dev/null -w "%{http_code}" http://$$(make ip container=mail -s):8025)]${C_NONE}\n"
 	@printf "\n${C_CYAN}TRAEFIK${C_NONE}\n"
-	@printf "   https://${SERVE_TRAEFIK_PROXY} ${C_GRAY}[$$(curl -k -s -o /dev/null -w "%{http_code}" https://${SERVE_TRAEFIK_PROXY})]${C_NONE}\n"
+	@printf "   https://${SERVE_REVERSE_PROXY} ${C_GRAY}[$$(curl -k -s -o /dev/null -w "%{http_code}" https://${SERVE_REVERSE_PROXY})]${C_NONE}\n"
 	@printf "   http://$$(make ip container=traefik -s):8080 ${C_GRAY}[$$(curl -k -s -o /dev/null -w "%{http_code}" http://$$(make ip container=traefik -s):8080)]${C_NONE}\n"
 	@printf "\n${C_CYAN}DATABASE${C_NONE}\n"
 	@printf "   ${C_GREEN}Engine:${C_NONE}		${DB_ENGINE}\n"
@@ -169,11 +169,11 @@ install-dependencies: ## Install application dependencies.
 
 .PHONY: install-database
 install-database: ## Install application database.
-	@if [ -f "$(DB_DUMP_INSTALL)" ]; then \
+	@if [ -f "$(DB_DUMP_INSTALL_PATH)" ]; then \
 		make up container=db; \
-		make db-import FILE=$(DB_DUMP_INSTALL); \
+		make db-import FILE=$(DB_DUMP_INSTALL_PATH); \
 	else \
-		echo "No database dump file found at $(DB_DUMP_INSTALL). Please create it before installing the database."; \
+		echo "No database dump file found at $(DB_DUMP_INSTALL_PATH). Please create it before installing the database."; \
 	fi
 
 .PHONY: install-wp
@@ -270,14 +270,14 @@ config-set: guard-KEY guard-VAL ## Set a customized configuration variable.
 	if [ ! -f $$FILE ]; then \
 		touch $$FILE; \
 	fi; \
-	if grep -q "^export $$KEY=" $$FILE; then \
+	if grep -q "^$$KEY=" $$FILE; then \
 		if sed --version >/dev/null 2>&1; then \
-			sed -i "s|^export $$KEY=.*|export $$KEY=$$VAL|" $$FILE; \
+			sed -i "s|^$$KEY=.*|$$KEY=$$VAL|" $$FILE; \
 		else \
-			sed -i '' "s|^export $$KEY=.*|export $$KEY=$$VAL|" $$FILE; \
+			sed -i '' "s|^$$KEY=.*|$$KEY=$$VAL|" $$FILE; \
 		fi; \
 	else \
-		echo "export $$KEY=$$VAL" >> $$FILE; \
+		echo "$$KEY=$$VAL" >> $$FILE; \
 	fi; \
 	echo "✅ $$KEY set to '$$VAL' in $$FILE (scope: $$SCOPE)"
 ##? [KEY="{{ name of variable }}"]		Variable name.
@@ -349,7 +349,7 @@ node:  ## Launch a NodeJS command.
 ##? [CMD="{{ command }}"]		[-h] by default.
 
 .PHONY: npm
-npm: $(THEME_ROOT_DIR)/package.json $(wildcard $(THEME_ROOT_DIR)/package-lock.json) ## Launch a NPM command.
+npm: $(THEME_DIR)/package.json $(wildcard $(THEME_DIR)/package-lock.json) ## Launch a NPM command.
 	@$(node) npm ${or ${CMD}, help}
 ##? [CMD="{{ command }}"]		[help] by default.
 
@@ -359,12 +359,12 @@ npx: ## Launch a NPX command.
 ##? [CMD="{{ command }}"]		[-h] by default.
 
 .PHONY: yarn
-yarn: $(THEME_ROOT_DIR)/package.json $(wildcard $(THEME_ROOT_DIR)/package-lock.json) ## Launch a YARN command.
+yarn: $(THEME_DIR)/package.json $(wildcard $(THEME_DIR)/package-lock.json) ## Launch a YARN command.
 	@$(node) yarn ${or ${CMD}, -h}
 ##? [CMD="{{ command }}"]		[-h] by default.
 
 .PHONY: pnpm
-pnpm: $(APP_ROOT_DIR)/package.json $(wildcard $(APP_ROOT_DIR)/package-lock.json) ## Launch a PNPM command.
+pnpm: $(APP_DIR)/package.json $(wildcard $(APP_DIR)/package-lock.json) ## Launch a PNPM command.
 	@$(node) pnpm ${or ${CMD}, -h}
 ##? [CMD="{{ command }}"]		[-h] by default.
 
@@ -393,9 +393,9 @@ db-dump: ## Dump the database.
 ##? [FILE="{{ file_path }}"]		Destination file
 
 .PHONY: db-dump-installer
-db-dump-installer: guard-DB_DUMP_INSTALL ## Generate a secure dump database to install without ADMIN_USER.
-	@if [ -f "$(DB_DUMP_INSTALL)" ] && [ "$(FORCE)" != "1" ]; then \
-		echo "⚠️  File $(DB_DUMP_INSTALL) already exists."; \
+db-dump-installer: guard-DB_DUMP_INSTALL_PATH ## Generate a secure dump database to install without ADMIN_USER.
+	@if [ -f "$(DB_DUMP_INSTALL_PATH)" ] && [ "$(FORCE)" != "1" ]; then \
+		echo "⚠️  File $(DB_DUMP_INSTALL_PATH) already exists."; \
 		read -p "Do you want to overwrite this file ? [y/N] " confirm; \
 		if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
 			echo "Operation canceled."; \
@@ -403,10 +403,10 @@ db-dump-installer: guard-DB_DUMP_INSTALL ## Generate a secure dump database to i
 		fi \
 	fi
 	@$(wp) user delete ${ADMIN_USER} --yes
-	@if echo "$(DB_DUMP_INSTALL)" | grep -q '\.sql\.gz$$'; then \
-		make db-dump FILE=$(DB_DUMP_INSTALL) GZIP=1; \
+	@if echo "$(DB_DUMP_INSTALL_PATH)" | grep -q '\.sql\.gz$$'; then \
+		make db-dump FILE=$(DB_DUMP_INSTALL_PATH) GZIP=1; \
 	else \
-		make db-dump FILE=$(DB_DUMP_INSTALL); \
+		make db-dump FILE=$(DB_DUMP_INSTALL_PATH); \
 	fi
 	@$(wp) user create ${ADMIN_USER} ${ADMIN_EMAIL} --user_pass=${ADMIN_PASSWORD} --role=administrator
 ##? [FORCE=1]			Force overwriting file if it exists.

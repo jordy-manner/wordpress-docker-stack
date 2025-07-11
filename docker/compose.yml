@@ -11,7 +11,7 @@ services:
     labels:
       traefik.enable: "true"
       traefik.http.routers.db.entrypoints: "websecure"
-      traefik.http.routers.db.rule: "Host(`${SERVE_DB_PROXY}`)"
+      traefik.http.routers.db.rule: "Host(`${SERVE_DBMGR_PROXY}`)"
       traefik.http.routers.db.tls: "true"
       traefik.http.services.db.loadbalancer.server.port: "8080"
     depends_on:
@@ -20,7 +20,7 @@ services:
   db:
     build:
       context: .
-      dockerfile: ${DOCKER_PWD}/build/mariadb/Dockerfile
+      dockerfile: ${DOCKER_DIR}/build/mariadb/Dockerfile
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
@@ -32,7 +32,7 @@ services:
   expose:
     build:
       context: .
-      dockerfile: ${DOCKER_PWD}/build/expose/Dockerfile
+      dockerfile: ${DOCKER_DIR}/build/expose/Dockerfile
     init: true
 
   mail:
@@ -40,7 +40,7 @@ services:
     labels:
       traefik.enable: "true"
       traefik.http.routers.mail.entrypoints: "websecure"
-      traefik.http.routers.mail.rule: "Host(`${SERVE_MAIL_PROXY}`)"
+      traefik.http.routers.mail.rule: "Host(`${SERVE_MAILCATCH_PROXY}`)"
       traefik.http.routers.mail.tls: "true"
       traefik.http.services.mail.loadbalancer.server.port: "8025"
 
@@ -53,10 +53,12 @@ services:
         USER_NAME: ${LOCAL_USERNAME}
         USER_UID: ${LOCAL_UID}
       context: .
-      dockerfile: ${DOCKER_PWD}/build/node/Dockerfile
+      dockerfile: ${DOCKER_DIR}/build/node/Dockerfile
     user: ${LOCAL_UID}
+    environment:
+      APP_URL: ${NPM_DEV_APP_URL}
     volumes:
-      - ${THEME_ROOT_DIR}:/usr/src/app
+      - ${THEME_DIR}:/usr/src/app
 
   traefik:
     image: traefik:v2.11
@@ -64,7 +66,7 @@ services:
     labels:
       traefik.enable: "true"
       traefik.http.routers.traefik.entrypoints: "websecure"
-      traefik.http.routers.traefik.rule: "Host(`${SERVE_TRAEFIK_PROXY}`)"
+      traefik.http.routers.traefik.rule: "Host(`${SERVE_REVERSE_PROXY}`)"
       traefik.http.routers.traefik.service: "api@internal"
       traefik.http.routers.traefik.tls: "true"
     security_opt:
@@ -74,9 +76,9 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ${DOCKER_PWD}/conf/traefik/dynamic_conf.yml:/etc/traefik/dynamic_conf.yml:ro
-      - ${DOCKER_PWD}/conf/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ${DOCKER_PWD}/data/traefik/certs:/etc/certs
+      - ${DOCKER_DIR}/conf/traefik/dynamic_conf.yml:/etc/traefik/dynamic_conf.yml:ro
+      - ${DOCKER_DIR}/conf/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ${DOCKER_DIR}/data/traefik/certs:/etc/certs
 
   web:
     build:
@@ -84,7 +86,7 @@ services:
         USER_NAME: ${LOCAL_USERNAME}
         USER_UID: ${LOCAL_UID}
       context: .
-      dockerfile: ${DOCKER_PWD}/build/web/Dockerfile
+      dockerfile: ${DOCKER_DIR}/build/web/Dockerfile
     environment:
       WP_APP_RELEASE: ${APP_RELEASE}
       WP_DB_HOST: ${DB_HOST}
@@ -104,17 +106,17 @@ services:
       traefik.http.routers.websecure.rule: "Host(`${SERVE_WEB_PROXY}`)"
       traefik.http.routers.websecure.tls: "true"
     volumes:
-      - ${APP_ROOT_DIR}:/var/www/html
-      - ${PROJECT_ROOT_DIR}/.git:/var/www/html/.git
+      - ${APP_DIR}:/var/www/html
+      - ${PROJECT_DIR}/.git:/var/www/html/.git
       - ${LOCAL_HOME}/.composer:/home/${LOCAL_USERNAME}/.composer
-      - ${DOCKER_PWD}/conf/php/99-custom.ini:/usr/local/etc/php/conf.d/99-custom.ini
+      - ${DOCKER_DIR}/conf/php/99-custom.ini:/usr/local/etc/php/conf.d/99-custom.ini
     depends_on:
       - db
 
   wp-cli:
     build:
       context: .
-      dockerfile: ${DOCKER_PWD}/build/wp-cli/Dockerfile
+      dockerfile: ${DOCKER_DIR}/build/wp-cli/Dockerfile
     volumes_from:
       - web
     links:

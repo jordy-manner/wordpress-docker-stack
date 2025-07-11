@@ -50,11 +50,11 @@ make config-get KEY=NAME_OF_VARIABLE
 
 Name of the project.
 
-#### PROJECT_ROOT_DIR
+#### PROJECT_DIR
 
 Root directory of the project.
 
-#### APP_ROOT_DIR
+#### APP_DIR
 
 Root directory of the web application.
 
@@ -62,7 +62,7 @@ Root directory of the web application.
 
 Name of the Wordpress theme.
 
-#### THEME_ROOT_DIR
+#### THEME_DIR
 
 Wordpress themes root directory.
 
@@ -74,15 +74,15 @@ Local domain used for the reverse proxy.
 
 Hostname of the application website (Wordpress).
 
-#### SERVE_DB_PROXY
+#### SERVE_DBMGR_PROXY
 
 Hostname of the database manager webUI (Adminer).
 
-#### SERVE_MAIL_PROXY
+#### SERVE_MAILCATCH_PROXY
 
 Hostname of the mail server webUI (Mailpit).
 
-#### SERVE_TRAEFIK_PROXY
+#### SERVE_REVERSE_PROXY
 
 Hostname of the reverse proxy webUI (Traefik).
 
@@ -154,9 +154,13 @@ Database prefix.
 
 Database dump directory.
 
-#### DB_DUMP_INSTALL
+#### DB_DUMP_INSTALL_PATH
 
 Path to save secure dump.
+
+#### NPM_DEV_APP_URL
+
+Used `APP_URL` when you run `npm run dev` command
 
 #### ADMIN_USER
 
