@@ -291,6 +291,46 @@ So you can remove theme/vendor and theme/composer.lock file
 make db-dumb-install
 ```
 
+### Make `npm run dev` works
+
+Edit `app/public/app/themes/{{ theme_name }}/package.json`
+
+```diff
+  "scripts": {
+-   "dev": "vite",
++   "dev": "vite --host",
++   "watch": "vite build --watch --mode=watch",
+    "build": "vite build",
+
+```
+
+> The `watch` command is a good alternative of `dev` command works in much contexts but without browser refresh
+
+Edit `app/public/app/themes/{{ theme_name }}/vite.config.js`
+
+```diff
+import { wordpressPlugin, wordpressThemeJson } from '@roots/vite-plugin';
++import * as os from 'node:os'
+
++const hmrHost = Object.values(os.networkInterfaces())
++    .flatMap((nInterface) => nInterface !== null && nInterface !== void 0 ? nInterface : [])
++    .filter((detail) => detail && detail.address && detail.family === 'IPv4')
++    .filter((detail) => !detail.address.includes('127.0.0.1'))
+
+export default defineConfig({
+-   base: '/app/themes/wpds/public/build/',
++  base: '/',
++  server: {
++    hmr: {
++        host: hmrHost[0].address,
++    }
++  },
+  plugins: [
+    tailwindcss(),
+```
+
+> This short hack allows `run dev` work but only in http scheme for the moment.
+
 ### Create a git repository for your application 
 
 1. Remove .git directory (`rm -rf .git`)
