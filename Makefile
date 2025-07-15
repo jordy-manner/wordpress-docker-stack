@@ -159,7 +159,7 @@ open: ## Open browser
 
 ##@ Install
 .PHONY: install
-install: build up install-dependencies install-database post-install info ## ## Installing project
+install: build up install-cert install-dependencies install-database post-install info ## ## Installing project
 
 .PHONY: cert-install
 install-cert: cert-init-ca cert-sign cert-generate-traefik-config cert-import-ca
@@ -417,7 +417,7 @@ db-dump-installer: guard-DB_DUMP_INSTALL_PATH ## Generate a secure dump database
 
 ##@ Certificates
 .PHONY: cert-init-ca
-cert-init-ca:
+cert-init-ca: ## Initialize a self-signed CA certificate.
 	@mkdir -p $(CERT_CA_DIR)
 	@echo "🔐 Generating CA private key..."
 	openssl genrsa -out $(CERT_CA_DIR)/$(CERT_CA_KEY) 4096
@@ -427,7 +427,7 @@ cert-init-ca:
 	-subj "$(CERT_CA_SUBJ)"
 
 .PHONY: cert-sign
-cert-sign:
+cert-sign: ## Create a certificate signing request (CSR) and sign it with the local CA.
 	@mkdir -p $(CERT_DIR)
 
 	@echo "🔑 Generating wildcard private key..."
@@ -453,13 +453,13 @@ cert-sign:
 	-days 3650 -sha256 -extfile $(CERT_DIR)/$(CERT_EXT)
 
 .PHONY: cert-generate-traefik-config
-cert-generate-traefik-config:
+cert-generate-traefik-config: ## Generate a Traefik configuration file with dynamic TLS certificates.
 	@echo "⚙️ Generating dynamic_conf.yml from template..."
 	envsubst < $(DOCKER_DIR)/conf/traefik/dynamic_conf.yml.tmpl > $(DOCKER_DIR)/conf/traefik/dynamic_conf.yml
 	@echo "✅ Traefik config generated at $(DOCKER_DIR)/conf/traefik/dynamic_conf.yml"
 
 .PHONY: cert-import-ca
-cert-import-ca:
+cert-import-ca: ## Import the local CA certificate into the trusted store of the operating system.
 	@if [ "$$(uname)" = "Linux" ] && command -v update-ca-certificates >/dev/null; then \
 		echo "📥 Importing CA certificate into Linux trusted store..."; \
 		sudo cp $(CERT_CA_DIR)/$(CERT_CA_CRT) /usr/local/share/ca-certificates/${PROJECT_NAME}-ca.crt; \
@@ -472,12 +472,12 @@ cert-import-ca:
 	fi
 
 .PHONY: cert-clean
-cert-clean:
+cert-clean: ## Clean up all certificates.
 	@echo "🧹 Cleaning up all certificates..."
 	rm -rf $(CERT_DIR)
 
 .PHONY: cert-status
-cert-status:
+cert-status: ## Check certificates status.
 	@echo "🔍 Checking certificates status..."
 	@openssl x509 -in $(CERT_DIR)/$(CERT_CRT) -noout -dates || echo "Certificate not found."
 	@openssl x509 -in $(CERT_CA_DIR)/$(CERT_CA_CRT) -noout -dates || echo "CA certificate not found."
