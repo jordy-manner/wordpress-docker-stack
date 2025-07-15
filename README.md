@@ -285,6 +285,24 @@ make composer CMD=update
 
 So you can remove theme/vendor and theme/composer.lock file
 
+### Generate self-signed certificate and Authority
+
+```bash
+make install-cert
+```
+
+#### Add Certificate Authority in Chrome
+
+Type in url [chrome://certificate-manager/localcerts/usercerts](chrome://certificate-manager/localcerts/usercerts)
+
+And import `docker/conf/certs/ca/ca.crt`
+
+#### Add Certificate Authority in Firefox
+
+Type in url [about:preferences#privacy](about:preferences#privacy)
+
+And import `docker/conf/certs/ca/ca.crt` from Certificats/Show certificates/Import - Check "Confirm this CA for website".
+
 ### Dump your database and create an install for future installation
 
 ``` bash
@@ -298,13 +316,33 @@ Edit `app/public/app/themes/{{ theme_name }}/package.json`
 ```diff
   "scripts": {
 -   "dev": "vite",
-+   "dev": "vite --host",
++   "dev": "vite --host 0.0.0.0",
 +   "watch": "vite build --watch --mode=watch",
     "build": "vite build",
 
 ```
 
 > The `watch` command is a good alternative of `dev` command works in much contexts but without browser refresh
+
+### Https (recommended)
+
+Certificate must be installed (@see [Generate self-signed certificate and Authority](#generate-self-signed-certificate-and-authority))
+
+Edit `app/public/app/themes/{{ theme_name }}/vite.config.js` 
+
+```diff
+-   base: '/app/themes/wpds/public/build/',
++    base: '/',
++    server: {
++        https: {
++            key: fs.readFileSync('certs/wpds.localtest.me.key'),
++            cert: fs.readFileSync('certs/wpds.localtest.me.crt')
++        },
++        hmr: {
++           host: 'wpds.localtest.me'
++        }
++    },
+```
 
 Edit `app/public/app/themes/{{ theme_name }}/vite.config.js`
 
@@ -329,7 +367,7 @@ export default defineConfig({
     tailwindcss(),
 ```
 
-> This short hack allows `run dev` work but only in http scheme for the moment.
+> This short hack allows `run dev` work but unfortunately only in http scheme.
 
 ### Create a git repository for your application 
 

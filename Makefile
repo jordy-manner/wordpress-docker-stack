@@ -17,7 +17,7 @@ include $(DOCKER_DIR)/conf/.env
 composer = $(php) php -d memory_limit=-1 /usr/local/bin/composer
 console = $(php) php -d memory_limit=-1 bin/console
 docker-compose = docker compose -f $(DOCKER_DIR)/compose.yml -f $(DOCKER_DIR)/compose.override.yml -p $(PROJECT_NAME)
-node = $(docker-compose) run --rm node
+node = $(docker-compose) exec node
 php = $(docker-compose) run --rm web
 wp = $(docker-compose) run --rm wp-cli wp --path=/var/www/html/public/wp
 
@@ -160,6 +160,10 @@ open: ## Open browser
 ##@ Install
 .PHONY: install
 install: build up install-dependencies install-database post-install info ## ## Installing project
+
+.PHONY: cert-install
+install-cert: cert-init-ca cert-sign cert-generate-traefik-config cert-import-ca
+	@echo "✅ All certificates have been successfully generated!"
 
 .PHONY: install-dependencies
 install-dependencies: ## Install application dependencies.
@@ -410,6 +414,73 @@ db-dump-installer: guard-DB_DUMP_INSTALL_PATH ## Generate a secure dump database
 	fi
 	@$(wp) user create ${ADMIN_USER} ${ADMIN_EMAIL} --user_pass=${ADMIN_PASSWORD} --role=administrator
 ##? [FORCE=1]			Force overwriting file if it exists.
+
+##@ Certificates
+.PHONY: cert-init-ca
+cert-init-ca:
+	@mkdir -p $(CERT_CA_DIR)
+	@echo "🔐 Generating CA private key..."
+	openssl genrsa -out $(CERT_CA_DIR)/$(CERT_CA_KEY) 4096
+
+	@echo "📜 Generating self-signed root certificate..."
+	openssl req -x509 -new -nodes -key $(CERT_CA_DIR)/$(CERT_CA_KEY) -sha256 -days 3650 -out $(CERT_CA_DIR)/$(CERT_CA_CRT) \
+	-subj "$(CERT_CA_SUBJ)"
+
+.PHONY: cert-sign
+cert-sign:
+	@mkdir -p $(CERT_DIR)
+
+	@echo "🔑 Generating wildcard private key..."
+	openssl genrsa -out $(CERT_DIR)/$(CERT_KEY) 2048
+
+	@echo "📝 Creating extensions file..."
+	@echo "authorityKeyIdentifier=keyid,issuer" > $(CERT_DIR)/$(CERT_EXT)
+	@echo "basicConstraints=CA:FALSE" >> $(CERT_DIR)/$(CERT_EXT)
+	@echo "keyUsage=digitalSignature,nonRepudiation,keyEncipherment,dataEncipherment" >> $(CERT_DIR)/$(CERT_EXT)
+	@echo "subjectAltName = @alt_names" >> $(CERT_DIR)/$(CERT_EXT)
+	@echo "" >> $(CERT_DIR)/$(CERT_EXT)
+	@echo "[alt_names]" >> $(CERT_DIR)/$(CERT_EXT)
+	@echo "DNS.1 = *.$(CERT_DOMAIN)" >> $(CERT_DIR)/$(CERT_EXT)
+	@echo "DNS.2 = $(CERT_DOMAIN)" >> $(CERT_DIR)/$(CERT_EXT)
+
+	@echo "📥 Generating CSR..."
+	openssl req -new -key $(CERT_DIR)/$(CERT_KEY) -out $(CERT_DIR)/$(CERT_CSR) \
+	-subj "/CN=*.$(CERT_DOMAIN)"
+
+	@echo "✅ Signing certificate with local CA..."
+	openssl x509 -req -in $(CERT_DIR)/$(CERT_CSR) -CA $(CERT_CA_DIR)/$(CERT_CA_CRT) -CAkey $(CERT_CA_DIR)/$(CERT_CA_KEY) \
+	-CAserial $(CERT_CA_DIR)/$(CERT_CA_SERIAL_FILE) -CAcreateserial -out $(CERT_DIR)/$(CERT_CRT) \
+	-days 3650 -sha256 -extfile $(CERT_DIR)/$(CERT_EXT)
+
+.PHONY: cert-generate-traefik-config
+cert-generate-traefik-config:
+	@echo "⚙️ Generating dynamic_conf.yml from template..."
+	envsubst < $(DOCKER_DIR)/conf/traefik/dynamic_conf.yml.tmpl > $(DOCKER_DIR)/conf/traefik/dynamic_conf.yml
+	@echo "✅ Traefik config generated at $(DOCKER_DIR)/conf/traefik/dynamic_conf.yml"
+
+.PHONY: cert-import-ca
+cert-import-ca:
+	@if [ "$$(uname)" = "Linux" ] && command -v update-ca-certificates >/dev/null; then \
+		echo "📥 Importing CA certificate into Linux trusted store..."; \
+		sudo cp $(CERT_CA_DIR)/$(CERT_CA_CRT) /usr/local/share/ca-certificates/${PROJECT_NAME}-ca.crt; \
+		sudo update-ca-certificates; \
+	elif [ "$$(uname)" = "Darwin" ] && command -v security >/dev/null; then \
+		echo "📥 Importing CA certificate into MacOS System Keychain..."; \
+		sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain $(CERT_CA_DIR)/$(CERT_CA_CRT); \
+	else \
+		echo "⚠️  Skipping CA import: unsupported OS or missing required commands."; \
+	fi
+
+.PHONY: cert-clean
+cert-clean:
+	@echo "🧹 Cleaning up all certificates..."
+	rm -rf $(CERT_DIR)
+
+.PHONY: cert-status
+cert-status:
+	@echo "🔍 Checking certificates status..."
+	@openssl x509 -in $(CERT_DIR)/$(CERT_CRT) -noout -dates || echo "Certificate not found."
+	@openssl x509 -in $(CERT_CA_DIR)/$(CERT_CA_CRT) -noout -dates || echo "CA certificate not found."
 
 #### Utils
 guard-%:

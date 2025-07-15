@@ -1,13 +1,13 @@
+tls:
+  certificates:
+    - certFile: "/etc/certs/wpds.localtest.me.crt"
+      keyFile: "/etc/certs/wpds.localtest.me.key"
+
 http:
   routers:
     traefik:
+      rule: "Host(`traefik.wpds.localtest.me`)"
+      entryPoints:
+        - websecure
       service: "api@internal"
-      tls:
-        domains:
-          - main: "localtest.me"
-            sans:
-              - "*.localtest.me"
-tls:
-  certificates:
-    - certFile: "/etc/certs/localtest.me.pem"
-      keyFile: "/etc/certs/localtest.me-key.pem"
+      tls: {}

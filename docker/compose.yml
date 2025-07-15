@@ -57,8 +57,12 @@ services:
     user: ${LOCAL_UID}
     environment:
       APP_URL: ${NPM_DEV_APP_URL}
+    command: sleep infinity
     volumes:
       - ${THEME_DIR}:/usr/src/app
+      - ${DOCKER_DIR}/data/certs:/usr/src/app/certs
+    ports:
+      - "5173:5173"
 
   traefik:
     image: traefik:v2.11
@@ -75,10 +79,10 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${DOCKER_DIR}/conf/traefik/dynamic_conf.yml:/etc/traefik/dynamic_conf.yml:ro
       - ${DOCKER_DIR}/conf/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ${DOCKER_DIR}/data/traefik/certs:/etc/certs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${DOCKER_DIR}/data/certs:/etc/certs
 
   web:
     build:
