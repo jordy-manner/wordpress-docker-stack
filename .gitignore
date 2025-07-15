@@ -1,1 +1,8 @@
+###> config ###
 .config.env.local
+###< config ###
+
+###> certificates ###
+docker/data/certs/
+!docker/data/certs/.gitkeep
+###< certificates ###
