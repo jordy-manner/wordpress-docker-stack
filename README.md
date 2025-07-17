@@ -324,7 +324,7 @@ Edit `app/public/app/themes/{{ theme_name }}/package.json`
 
 > The `watch` command is a good alternative of `dev` command works in much contexts but without browser refresh
 
-### Https (recommended)
+### Https and Http work (recommended)
 
 Certificate must be installed (@see [Generate self-signed certificate and Authority](#generate-self-signed-certificate-and-authority))
 
@@ -343,6 +343,8 @@ Edit `app/public/app/themes/{{ theme_name }}/vite.config.js`
 +        }
 +    },
 ```
+
+### Http only
 
 Edit `app/public/app/themes/{{ theme_name }}/vite.config.js`
 

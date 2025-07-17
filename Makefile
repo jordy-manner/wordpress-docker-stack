@@ -14,12 +14,12 @@ endif
 include $(DOCKER_DIR)/conf/.env
 
 # set binary
-composer = $(php) php -d memory_limit=-1 /usr/local/bin/composer
-console = $(php) php -d memory_limit=-1 bin/console
+composer = @$(php) -d memory_limit=-1 /usr/local/bin/composer
+console = @$(php) -d memory_limit=-1 bin/console
 docker-compose = docker compose -f $(DOCKER_DIR)/compose.yml -f $(DOCKER_DIR)/compose.override.yml -p $(PROJECT_NAME)
-node = $(docker-compose) exec node
-php = $(docker-compose) run --rm web
-wp = $(docker-compose) run --rm wp-cli wp --path=/var/www/html/public/wp
+node = @$(docker-compose) exec node
+php = @$(docker-compose) run --rm web php
+wp = @$(docker-compose) run --rm wp-cli wp --path=/var/www/html/public/wp
 
 # output colors
 C_BLACK=\033[0;30m
@@ -90,7 +90,7 @@ init-create: ## Download and install Roots/Sage.
 
 .PHONY: init-config
 init-config: ## Finalize Roots/Sage configuration.
-	@$(docker-compose) exec -ti web bash -c "sed -ri -e 's!/app/themes/sage/public/build/!/app/themes/${THEME_NAME}/public/build/!g' /var/www/html/public/app/themes/${THEME_NAME}/vite.config.js"
+	@$(docker-compose) exec -ti web bash -c "sed -ri -e 's!/app/themes/sage/public/build/!/!g' /var/www/html/public/app/themes/${THEME_NAME}/vite.config.js"
 
 .PHONY: init-dependencies
 init-dependencies: ## Install application dependencies.
@@ -161,7 +161,7 @@ open: ## Open browser
 .PHONY: install
 install: build up install-cert install-dependencies install-database post-install info ## ## Installing project
 
-.PHONY: cert-install
+.PHONY: install-cert
 install-cert: cert-init-ca cert-sign cert-generate-traefik-config cert-import-ca
 	@echo "✅ All certificates have been successfully generated!"
 
@@ -303,7 +303,7 @@ sh: ## Open a container shell.
 
 .PHONY: php
 php: ## Launch a PHP command.
-	@$(php) php ${or ${CMD}, -v}
+	@$(php) ${or ${CMD}, -v}
 ##? [CMD="{{ command }}"]		[-v] by default.
 
 .PHONY: composer
