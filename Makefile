@@ -15,7 +15,6 @@ include $(DOCKER_DIR)/conf/.env
 
 # set binary
 composer = @$(php) -d memory_limit=-1 /usr/local/bin/composer
-console = @$(php) -d memory_limit=-1 bin/console
 docker-compose = docker compose -f $(DOCKER_DIR)/compose.yml -f $(DOCKER_DIR)/compose.override.yml -p $(PROJECT_NAME)
 node = @$(docker-compose) exec node
 php = @$(docker-compose) run --rm web php
@@ -58,10 +57,28 @@ config_vars=\
 	DB_CHARSET\
 	DB_SERVER_VERSION\
 	DB_ROOT_PASSWORD\
-	DB_NAME DB_USER\
+	DB_NAME\
+	DB_USER\
 	DB_PASSWORD\
 	DB_PREFIX\
 	DB_DUMP_INSTALL_PATH\
+	CERT_DIR\
+	CERT_CA_DIR\
+	CERT_CA_COUNTR\
+	CERT_CA_STATE\
+	CERT_CA_LOCALITY\
+	CERT_CA_ORG\
+	CERT_CA_ORG_UNIT\
+	CERT_CA_COMMON_NAME\
+	CERT_CA_SUBJ\
+	CERT_CA_CRT\
+	CERT_CA_KEY\
+	CERT_CA_SERIAL_FILE\
+	CERT_DOMAIN\
+	CERT_KEY\
+	CERT_CSR\
+	CERT_CRT\
+	CERT_EXT\
 	ADMIN_USER\
 	ADMIN_PASSWORD\
 	ADMIN_EMAIL\
